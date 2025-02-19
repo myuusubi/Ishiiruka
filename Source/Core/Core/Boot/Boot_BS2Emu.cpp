@@ -36,7 +36,7 @@ namespace
 void PresetTimeBaseTicks()
 {
   const u64 emulated_time =
-    ExpansionInterface::CEXIIPL::GetEmulatedTime(ExpansionInterface::CEXIIPL::GC_EPOCH);
+      ExpansionInterface::CEXIIPL::GetEmulatedTime(ExpansionInterface::CEXIIPL::GC_EPOCH);
 
   const u64 time_base_ticks = emulated_time * 40500000ULL;
 
@@ -55,11 +55,10 @@ void CBoot::RunFunction(u32 address)
 
 void CBoot::SetupMSR()
 {
-  UReg_MSR& m_MSR = ((UReg_MSR&)PowerPC::ppcState.msr);
-  m_MSR.FP = 1;
-  m_MSR.DR = 1;
-  m_MSR.IR = 1;
-  m_MSR.EE = 1;
+  MSR.FP = 1;
+  MSR.DR = 1;
+  MSR.IR = 1;
+  MSR.EE = 1;
 }
 
 void CBoot::SetupBAT(bool is_wii)
@@ -137,7 +136,7 @@ bool CBoot::RunApploader(bool is_wii, const DiscIO::Volume& volume)
     u32 iDVDOffset = PowerPC::Read_U32(0x8130000c) << (is_wii ? 2 : 0);
 
     INFO_LOG(MASTER_LOG, "DVDRead: offset: %08x   memOffset: %08x   length: %i", iDVDOffset,
-      iRamAddress, iLength);
+             iRamAddress, iLength);
     DVDRead(volume, iDVDOffset, iRamAddress, iLength, partition);
 
   } while (PowerPC::ppcState.gpr[3] != 0x00);
@@ -217,17 +216,17 @@ bool CBoot::EmulatedBS2_GC(const DiscIO::Volume& volume)
 bool CBoot::SetupWiiMemory()
 {
   static const std::map<DiscIO::Region, const RegionSetting> region_settings = {
-    { DiscIO::Region::NTSC_J,{ "JPN", "NTSC", "JP", "LJ" } },
-    { DiscIO::Region::NTSC_U,{ "USA", "NTSC", "US", "LU" } },
-    { DiscIO::Region::PAL,{ "EUR", "PAL", "EU", "LE" } },
-    { DiscIO::Region::NTSC_K,{ "KOR", "NTSC", "KR", "LKH" } } };
+      {DiscIO::Region::NTSC_J, {"JPN", "NTSC", "JP", "LJ"}},
+      {DiscIO::Region::NTSC_U, {"USA", "NTSC", "US", "LU"}},
+      {DiscIO::Region::PAL, {"EUR", "PAL", "EU", "LE"}},
+      {DiscIO::Region::NTSC_K, {"KOR", "NTSC", "KR", "LKH"}}};
   auto entryPos = region_settings.find(SConfig::GetInstance().m_region);
   const RegionSetting& region_setting = entryPos->second;
 
   SettingsHandler gen;
   std::string serno;
   const std::string settings_file_path(
-    Common::GetTitleDataPath(Titles::SYSTEM_MENU, Common::FROM_SESSION_ROOT) + WII_SETTING);
+      Common::GetTitleDataPath(Titles::SYSTEM_MENU, Common::FROM_SESSION_ROOT) + WII_SETTING);
   if (File::Exists(settings_file_path) && gen.Open(settings_file_path))
   {
     serno = gen.GetValue("SERNO");
@@ -286,7 +285,7 @@ bool CBoot::SetupWiiMemory()
   Memory::Write_U32(0x00000023, 0x0000002c);            // Production Board Model
   Memory::Write_U32(0x00000000, 0x00000030);            // Init
   Memory::Write_U32(0x817FEC60, 0x00000034);            // Init
-                                                        // 38, 3C should get start, size of FST through apploader
+  // 38, 3C should get start, size of FST through apploader
   Memory::Write_U32(0x8008f7b8, 0x000000e4);            // Thread Init
   Memory::Write_U32(Memory::REALRAM_SIZE, 0x000000f0);  // "Simulated memory size" (debug mode?)
   Memory::Write_U32(0x8179b500, 0x000000f4);            // __start
@@ -300,20 +299,20 @@ bool CBoot::SetupWiiMemory()
   Memory::Write_U16(0x8201, 0x000030e6);                // Dev console / debug capable
   Memory::Write_U32(0x00000000, 0x000030f0);            // Apploader
 
-                                                        // During the boot process, 0x315c is first set to 0xdeadbeef by IOS
-                                                        // in the boot_ppc syscall. The value is then partly overwritten by SDK titles.
-                                                        // Two bytes at 0x315e are used to indicate the "devkit boot program version".
-                                                        // It is only written to by the system menu, so we must do so here as well.
-                                                        //
-                                                        // 0x0113 appears to mean v1.13, which is the latest version.
-                                                        // It is fine to always use the latest value as apploaders work with all versions.
+  // During the boot process, 0x315c is first set to 0xdeadbeef by IOS
+  // in the boot_ppc syscall. The value is then partly overwritten by SDK titles.
+  // Two bytes at 0x315e are used to indicate the "devkit boot program version".
+  // It is only written to by the system menu, so we must do so here as well.
+  //
+  // 0x0113 appears to mean v1.13, which is the latest version.
+  // It is fine to always use the latest value as apploaders work with all versions.
   Memory::Write_U16(0x0113, 0x0000315e);
 
   Memory::Write_U8(0x80, 0x0000315c);         // OSInit
   Memory::Write_U16(0x0000, 0x000030e0);      // PADInit
   Memory::Write_U32(0x80000000, 0x00003184);  // GameID Address
 
-                                              // Fake the VI Init of the IPL
+  // Fake the VI Init of the IPL
   Memory::Write_U32(DiscIO::IsNTSC(SConfig::GetInstance().m_region) ? 0 : 1, 0x000000CC);
 
   // Clear exception handler. Why? Don't we begin with only zeros?
@@ -328,7 +327,7 @@ bool CBoot::SetupWiiMemory()
 static void WriteEmptyPlayRecord()
 {
   const std::string file_path =
-    Common::GetTitleDataPath(Titles::SYSTEM_MENU, Common::FROM_SESSION_ROOT) + "play_rec.dat";
+      Common::GetTitleDataPath(Titles::SYSTEM_MENU, Common::FROM_SESSION_ROOT) + "play_rec.dat";
   File::IOFile playrec_file(file_path, "r+b");
   std::vector<u8> empty_record(0x80);
   playrec_file.WriteBytes(empty_record.data(), empty_record.size());
@@ -370,10 +369,10 @@ bool CBoot::EmulatedBS2_Wii(const DiscIO::Volume& volume)
 
   DVDRead(volume, 0x00000000, 0x00000000, 0x20, DiscIO::PARTITION_NONE);  // Game Code
 
-                                                                          // This is some kind of consistency check that is compared to the 0x00
-                                                                          // values as the game boots. This location keeps the 4 byte ID for as long
-                                                                          // as the game is running. The 6 byte ID at 0x00 is overwritten sometime
-                                                                          // after this check during booting.
+  // This is some kind of consistency check that is compared to the 0x00
+  // values as the game boots. This location keeps the 4 byte ID for as long
+  // as the game is running. The 6 byte ID at 0x00 is overwritten sometime
+  // after this check during booting.
   DVDRead(volume, 0, 0x3180, 4, partition);
 
   SetupMSR();

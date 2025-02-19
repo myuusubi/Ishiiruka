@@ -18,6 +18,7 @@
 RegisterWidget::RegisterWidget(QWidget* parent) : QDockWidget(parent)
 {
   setWindowTitle(tr("Registers"));
+  setObjectName(QStringLiteral("registers"));
   setAllowedAreas(Qt::AllDockWidgetAreas);
 
   auto& settings = Settings::GetQSettings();
@@ -71,6 +72,7 @@ void RegisterWidget::CreateWidgets()
   m_table->setColumnCount(9);
 
   m_table->verticalHeader()->setVisible(false);
+  m_table->verticalHeader()->setDefaultSectionSize(24);
   m_table->setContextMenuPolicy(Qt::CustomContextMenu);
   m_table->setSelectionMode(QAbstractItemView::SingleSelection);
 
@@ -294,8 +296,8 @@ void RegisterWidget::PopulateTable()
               [](u64 value) { PowerPC::ppcState.fpscr = value; });
 
   // MSR
-  AddRegister(23, 5, RegisterType::msr, "MSR", [] { return PowerPC::ppcState.msr; },
-              [](u64 value) { PowerPC::ppcState.msr = value; });
+  AddRegister(23, 5, RegisterType::msr, "MSR", [] { return PowerPC::ppcState.msr.Hex; },
+              [](u64 value) { PowerPC::ppcState.msr.Hex = value; });
 
   // SRR 0-1
   AddRegister(24, 5, RegisterType::srr, "SRR0", [] { return PowerPC::ppcState.spr[SPR_SRR0]; },

@@ -168,7 +168,7 @@ static void GenerateDSIException(u32 _EffectiveAddress, bool _bWrite);
 template <XCheckTLBFlag flag, typename T, bool never_translate = false>
 static T ReadFromHardware(u32 em_address)
 {
-  if (!never_translate && UReg_MSR(MSR).DR)
+  if (!never_translate && MSR.DR)
   {
     auto translated_addr = TranslateAddress<flag>(em_address);
     if (!translated_addr.Success())
@@ -256,7 +256,7 @@ static T ReadFromHardware(u32 em_address)
 template <XCheckTLBFlag flag, typename T, bool never_translate = false>
 static void WriteToHardware(u32 em_address, const T data)
 {
-  if (!never_translate && UReg_MSR(MSR).DR)
+  if (!never_translate && MSR.DR)
   {
     auto translated_addr = TranslateAddress<flag>(em_address);
     if (!translated_addr.Success())
@@ -393,7 +393,7 @@ u32 Read_Opcode(u32 address)
 TryReadInstResult TryReadInstruction(u32 address)
 {
   bool from_bat = true;
-  if (UReg_MSR(MSR).IR)
+  if (MSR.IR)
   {
     auto tlb_addr = TranslateAddress<XCheckTLBFlag::Opcode>(address);
     if (!tlb_addr.Success())
@@ -581,6 +581,26 @@ u64 HostRead_U64(const u32 address)
   return ReadFromHardware<XCheckTLBFlag::NoException, u64>(address);
 }
 
+float HostRead_F32(const u32 address)
+{
+  const u32 integral = HostRead_U32(address);
+
+  float real;
+  std::memcpy(&real, &integral, sizeof(float));
+
+  return real;
+}
+
+double HostRead_F64(const u32 address)
+{
+  const u64 integral = HostRead_U64(address);
+
+  double real;
+  std::memcpy(&real, &integral, sizeof(double));
+
+  return real;
+}
+
 void HostWrite_U8(const u8 var, const u32 address)
 {
   WriteToHardware<XCheckTLBFlag::NoException, u8>(address, var);
@@ -599,6 +619,22 @@ void HostWrite_U32(const u32 var, const u32 address)
 void HostWrite_U64(const u64 var, const u32 address)
 {
   WriteToHardware<XCheckTLBFlag::NoException, u64>(address, var);
+}
+
+void HostWrite_F32(const float var, const u32 address)
+{
+  u32 integral;
+  std::memcpy(&integral, &var, sizeof(u32));
+
+  HostWrite_U32(integral, address);
+}
+
+void HostWrite_F64(const double var, const u32 address)
+{
+  u64 integral;
+  std::memcpy(&integral, &var, sizeof(u64));
+
+  HostWrite_U64(integral, address);
 }
 
 std::string HostGetString(u32 address, size_t size)
@@ -622,7 +658,7 @@ bool IsOptimizableRAMAddress(const u32 address)
   if (PowerPC::memchecks.HasAny())
     return false;
 
-  if (!UReg_MSR(MSR).DR)
+  if (!MSR.DR)
     return false;
 
   // TODO: This API needs to take an access size
@@ -658,14 +694,13 @@ static bool IsRAMAddress(u32 address, bool translate)
 
 bool HostIsRAMAddress(u32 address)
 {
-  return IsRAMAddress<XCheckTLBFlag::NoException>(address, UReg_MSR(MSR).DR);
+  return IsRAMAddress<XCheckTLBFlag::NoException>(address, MSR.DR);
 }
 
 bool HostIsInstructionRAMAddress(u32 address)
 {
   // Instructions are always 32bit aligned.
-  return !(address & 3) &&
-         IsRAMAddress<XCheckTLBFlag::OpcodeNoException>(address, UReg_MSR(MSR).IR);
+  return !(address & 3) && IsRAMAddress<XCheckTLBFlag::OpcodeNoException>(address, MSR.IR);
 }
 
 void DMA_LCToMemory(const u32 memAddr, const u32 cacheAddr, const u32 numBlocks)
@@ -743,7 +778,7 @@ void DMA_MemoryToLC(const u32 cacheAddr, const u32 memAddr, const u32 numBlocks)
 void ClearCacheLine(u32 address)
 {
   DEBUG_ASSERT((address & 0x1F) == 0);
-  if (UReg_MSR(MSR).DR)
+  if (MSR.DR)
   {
     auto translated_address = TranslateAddress<XCheckTLBFlag::Write>(address);
     if (translated_address.result == TranslateAddressResult::DIRECT_STORE_SEGMENT)
@@ -773,7 +808,7 @@ u32 IsOptimizableMMIOAccess(u32 address, u32 accessSize)
   if (PowerPC::memchecks.HasAny())
     return 0;
 
-  if (!UReg_MSR(MSR).DR)
+  if (!MSR.DR)
     return 0;
 
   // Translate address
@@ -795,7 +830,7 @@ bool IsOptimizableGatherPipeWrite(u32 address)
   if (PowerPC::memchecks.HasAny())
     return false;
 
-  if (!UReg_MSR(MSR).DR)
+  if (!MSR.DR)
     return false;
 
   // Translate address, only check BAT mapping.
@@ -810,7 +845,7 @@ bool IsOptimizableGatherPipeWrite(u32 address)
 
 TranslateResult JitCache_TranslateAddress(u32 address)
 {
-  if (!UReg_MSR(MSR).IR)
+  if (!MSR.IR)
     return TranslateResult{true, true, address};
 
   // TODO: We shouldn't use FLAG_OPCODE if the caller is the debugger.
@@ -824,35 +859,35 @@ TranslateResult JitCache_TranslateAddress(u32 address)
   return TranslateResult{true, from_bat, tlb_addr.address};
 }
 
-// *********************************************************************************
-// Warning: Test Area
-//
-// This code is for TESTING and it works in interpreter mode ONLY. Some games (like
-// COD iirc) work thanks to this basic TLB emulation.
-// It is just a small hack and we have never spend enough time to finalize it.
-// Cheers PearPC!
-//
-// *********************************************************************************
+  // *********************************************************************************
+  // Warning: Test Area
+  //
+  // This code is for TESTING and it works in interpreter mode ONLY. Some games (like
+  // COD iirc) work thanks to this basic TLB emulation.
+  // It is just a small hack and we have never spend enough time to finalize it.
+  // Cheers PearPC!
+  //
+  // *********************************************************************************
 
-/*
-* PearPC
-* ppc_mmu.cc
-*
-* Copyright (C) 2003, 2004 Sebastian Biallas (sb@biallas.net)
-*
-* This program is free software; you can redistribute it and/or modify
-* it under the terms of the GNU General Public License version 2 as
-* published by the Free Software Foundation.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program; if not, write to the Free Software
-* Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-*/
+  /*
+   * PearPC
+   * ppc_mmu.cc
+   *
+   * Copyright (C) 2003, 2004 Sebastian Biallas (sb@biallas.net)
+   *
+   * This program is free software; you can redistribute it and/or modify
+   * it under the terms of the GNU General Public License version 2 as
+   * published by the Free Software Foundation.
+   *
+   * This program is distributed in the hope that it will be useful,
+   * but WITHOUT ANY WARRANTY; without even the implied warranty of
+   * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   * GNU General Public License for more details.
+   *
+   * You should have received a copy of the GNU General Public License
+   * along with this program; if not, write to the Free Software
+   * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+   */
 
 #define PPC_EXC_DSISR_PAGE (1 << 30)
 #define PPC_EXC_DSISR_PROT (1 << 27)

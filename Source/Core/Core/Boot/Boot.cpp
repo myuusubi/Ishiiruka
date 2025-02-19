@@ -49,14 +49,14 @@
 #include "DiscIO/Volume.h"
 
 BootParameters::BootParameters(Parameters&& parameters_,
-  const std::optional<std::string>& savestate_path_)
-  : parameters(std::move(parameters_)), savestate_path(savestate_path_)
+                               const std::optional<std::string>& savestate_path_)
+    : parameters(std::move(parameters_)), savestate_path(savestate_path_)
 {
 }
 
 std::unique_ptr<BootParameters>
 BootParameters::GenerateFromFile(const std::string& path,
-  const std::optional<std::string>& savestate_path)
+                                 const std::optional<std::string>& savestate_path)
 {
   const bool is_drive = cdio_is_cdrom(path);
   // Check if the file exist, we may have gotten it from a --elf command line
@@ -72,32 +72,32 @@ BootParameters::GenerateFromFile(const std::string& path,
   std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
 
   static const std::unordered_set<std::string> disc_image_extensions = {
-    { ".gcm", ".iso", ".tgc", ".wbfs", ".ciso", ".gcz", ".dol", ".elf" } };
+      {".gcm", ".iso", ".tgc", ".wbfs", ".ciso", ".gcz", ".dol", ".elf"}};
   if (disc_image_extensions.find(extension) != disc_image_extensions.end() || is_drive)
   {
     std::unique_ptr<DiscIO::Volume> volume = DiscIO::CreateVolumeFromFilename(path);
     if (volume)
-      return std::make_unique<BootParameters>(Disc{ path, std::move(volume) });
+      return std::make_unique<BootParameters>(Disc{path, std::move(volume)}, savestate_path);
 
     if (extension == ".elf")
     {
-      return std::make_unique<BootParameters>(Executable{ path, std::make_unique<ElfReader>(path) },
-        savestate_path);
+      return std::make_unique<BootParameters>(Executable{path, std::make_unique<ElfReader>(path)},
+                                              savestate_path);
     }
 
     if (extension == ".dol")
     {
-      return std::make_unique<BootParameters>(Executable{ path, std::make_unique<DolReader>(path) },
-        savestate_path);
+      return std::make_unique<BootParameters>(Executable{path, std::make_unique<DolReader>(path)},
+                                              savestate_path);
     }
 
     if (is_drive)
     {
       PanicAlertT("Could not read \"%s\". "
-        "There is no disc in the drive or it is not a GameCube/Wii backup. "
-        "Please note that Dolphin cannot play games directly from the original "
-        "GameCube and Wii discs.",
-        path.c_str());
+                  "There is no disc in the drive or it is not a GameCube/Wii backup. "
+                  "Please note that Dolphin cannot play games directly from the original "
+                  "GameCube and Wii discs.",
+                  path.c_str());
     }
     else
     {
@@ -107,10 +107,10 @@ BootParameters::GenerateFromFile(const std::string& path,
   }
 
   if (extension == ".dff")
-    return std::make_unique<BootParameters>(DFF{ path }, savestate_path);
+    return std::make_unique<BootParameters>(DFF{path}, savestate_path);
 
   if (extension == ".wad")
-    return std::make_unique<BootParameters>(DiscIO::WiiWAD{ path }, savestate_path);
+    return std::make_unique<BootParameters>(DiscIO::WiiWAD{path}, savestate_path);
 
   PanicAlertT("Could not recognize file %s", path.c_str());
   return {};
@@ -138,7 +138,7 @@ static const DiscIO::Volume* SetDisc(std::unique_ptr<DiscIO::Volume> volume)
 }
 
 bool CBoot::DVDRead(const DiscIO::Volume& volume, u64 dvd_offset, u32 output_address, u32 length,
-  const DiscIO::Partition& partition)
+                    const DiscIO::Partition& partition)
 {
   std::vector<u8> buffer(length);
   if (!volume.Read(dvd_offset, length, buffer.data(), partition))
@@ -161,8 +161,8 @@ bool CBoot::FindMapFile(std::string* existing_map_file, std::string* writable_ma
     *writable_map_file = File::GetUserPath(D_MAPS_IDX) + game_id + ".map";
 
   bool found = false;
-  static const std::string maps_directories[] = { File::GetUserPath(D_MAPS_IDX),
-    File::GetSysDirectory() + MAPS_DIR DIR_SEP };
+  static const std::string maps_directories[] = {File::GetUserPath(D_MAPS_IDX),
+                                                 File::GetSysDirectory() + MAPS_DIR DIR_SEP};
   for (size_t i = 0; !found && i < ArraySize(maps_directories); ++i)
   {
     std::string path = maps_directories[i] + game_id + ".map";
@@ -252,8 +252,8 @@ bool CBoot::Load_BS2(const std::string& boot_rom_filename)
   const DiscIO::Region boot_region = SConfig::GetInstance().m_region;
   if (ipl_region != DiscIO::Region::Unknown && boot_region != ipl_region)
     PanicAlertT("%s IPL found in %s directory. The disc might not be recognized",
-      SConfig::GetDirectoryForRegion(ipl_region),
-      SConfig::GetDirectoryForRegion(boot_region));
+                SConfig::GetDirectoryForRegion(ipl_region),
+                SConfig::GetDirectoryForRegion(boot_region));
 
   // Run the descrambler over the encrypted section containing BS1/BS2
   ExpansionInterface::CEXIIPL::Descrambler((u8*)data.data() + 0x100, 0x1AFE00);
@@ -269,10 +269,9 @@ bool CBoot::Load_BS2(const std::string& boot_rom_filename)
   PowerPC::ppcState.gpr[4] = 0x00002030;
   PowerPC::ppcState.gpr[5] = 0x0000009c;
 
-  UReg_MSR& m_MSR = ((UReg_MSR&)PowerPC::ppcState.msr);
-  m_MSR.FP = 1;
-  m_MSR.DR = 1;
-  m_MSR.IR = 1;
+  MSR.FP = 1;
+  MSR.DR = 1;
+  MSR.IR = 1;
 
   PowerPC::ppcState.spr[SPR_HID0] = 0x0011c464;
   PowerPC::ppcState.spr[SPR_IBAT3U] = 0xfff0001f;
@@ -294,16 +293,15 @@ static void SetDefaultDisc()
 
 static void CopyDefaultExceptionHandlers()
 {
-  constexpr u32 EXCEPTION_HANDLER_ADDRESSES[] = { 0x00000100, 0x00000200, 0x00000300, 0x00000400,
-    0x00000500, 0x00000600, 0x00000700, 0x00000800,
-    0x00000900, 0x00000C00, 0x00000D00, 0x00000F00,
-    0x00001300, 0x00001400, 0x00001700 };
+  constexpr u32 EXCEPTION_HANDLER_ADDRESSES[] = {0x00000100, 0x00000200, 0x00000300, 0x00000400,
+                                                 0x00000500, 0x00000600, 0x00000700, 0x00000800,
+                                                 0x00000900, 0x00000C00, 0x00000D00, 0x00000F00,
+                                                 0x00001300, 0x00001400, 0x00001700};
 
   constexpr u32 RFI_INSTRUCTION = 0x4C000064;
   for (const u32 address : EXCEPTION_HANDLER_ADDRESSES)
     Memory::Write_U32(RFI_INSTRUCTION, address);
 }
-
 
 // Third boot step after BootManager and Core. See Call schedule in BootManager.cpp
 bool CBoot::BootUp(std::unique_ptr<BootParameters> boot)
@@ -314,7 +312,7 @@ bool CBoot::BootUp(std::unique_ptr<BootParameters> boot)
 
   // PAL Wii uses NTSC framerate and linecount in 60Hz modes
   VideoInterface::Preset(DiscIO::IsNTSC(config.m_region) ||
-    (config.bWii && Config::Get(Config::SYSCONF_PAL60)));
+                         (config.bWii && Config::Get(Config::SYSCONF_PAL60)));
 
   struct BootTitle
   {
@@ -444,7 +442,7 @@ bool CBoot::BootUp(std::unique_ptr<BootParameters> boot)
 }
 
 BootExecutableReader::BootExecutableReader(const std::string& file_name)
-  : BootExecutableReader(File::IOFile{ file_name, "rb" })
+    : BootExecutableReader(File::IOFile{file_name, "rb"})
 {
 }
 
@@ -473,7 +471,7 @@ void StateFlags::UpdateChecksum()
 void UpdateStateFlags(std::function<void(StateFlags*)> update_function)
 {
   const std::string file_path =
-    Common::GetTitleDataPath(Titles::SYSTEM_MENU, Common::FROM_SESSION_ROOT) + WII_STATE;
+      Common::GetTitleDataPath(Titles::SYSTEM_MENU, Common::FROM_SESSION_ROOT) + WII_STATE;
 
   File::IOFile file;
   StateFlags state;

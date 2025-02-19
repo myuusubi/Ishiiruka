@@ -565,8 +565,8 @@ void Jit64::Trace()
 #endif
 
   DEBUG_LOG(DYNA_REC, "JIT64 PC: %08x SRR0: %08x SRR1: %08x FPSCR: %08x MSR: %08x LR: %08x %s %s",
-            PC, SRR0, SRR1, PowerPC::ppcState.fpscr, PowerPC::ppcState.msr,
-            PowerPC::ppcState.spr[8], regs.c_str(), fregs.c_str());
+            PC, SRR0, SRR1, PowerPC::ppcState.fpscr, MSR.Hex, PowerPC::ppcState.spr[8],
+            regs.c_str(), fregs.c_str());
 }
 
 void Jit64::Jit(u32 em_address)
@@ -584,6 +584,12 @@ void Jit64::Jit(u32 em_address)
   if (IsAlmostFull() || m_far_code.IsAlmostFull() || trampolines.IsAlmostFull() ||
       SConfig::GetInstance().bJITNoBlockCache)
   {
+    if (!SConfig::GetInstance().bJITNoBlockCache)
+    {
+      const auto reason =
+          IsAlmostFull() ? "main" : m_far_code.IsAlmostFull() ? "far" : "trampoline";
+      WARN_LOG(POWERPC, "flushing %s code cache, please report if this happens a lot", reason);
+    }
     ClearCache();
   }
 

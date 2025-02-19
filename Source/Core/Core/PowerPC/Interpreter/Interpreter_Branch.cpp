@@ -2,12 +2,12 @@
 // Licensed under GPLv2+
 // Refer to the license.txt file included.
 
-#include "Core/PowerPC/Interpreter/Interpreter.h"
 #include "Common/Assert.h"
 #include "Common/CommonTypes.h"
 #include "Core/ConfigManager.h"
 #include "Core/CoreTiming.h"
 #include "Core/HLE/HLE.h"
+#include "Core/PowerPC/Interpreter/Interpreter.h"
 #include "Core/PowerPC/PowerPC.h"
 
 void Interpreter::bx(UGeckoInstruction inst)
@@ -119,9 +119,9 @@ void Interpreter::rfi(UGeckoInstruction inst)
   // Restore saved bits from SRR1 to MSR.
   // Gecko/Broadway can save more bits than explicitly defined in ppc spec
   const int mask = 0x87C0FFFF;
-  MSR = (MSR & ~mask) | (SRR1 & mask);
+  MSR.Hex = (MSR.Hex & ~mask) | (SRR1 & mask);
   // MSR[13] is set to 0.
-  MSR &= 0xFFFBFFFF;
+  MSR.Hex &= 0xFFFBFFFF;
   // Here we should check if there are pending exceptions, and if their corresponding enable bits
   // are set
   // if above is true, we'd do:
